@@ -1,4 +1,5 @@
 const path = require('path');
+const glob = require('glob')
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
@@ -6,6 +7,13 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require('webpack');
 
+const ImageMinimizerPlugin = require("image-minimizer-webpack-plugin");
+const PurgeCSSPlugin = require('purgecss-webpack-plugin')
+
+
+const PATHS = {
+    src: path.join(__dirname, 'src')
+}
 
 module.exports = {
     mode: "production",
@@ -74,6 +82,10 @@ module.exports = {
 
     plugins: [
         new MiniCssExtractPlugin({ filename: "[name].[contenthash].css" }),
+        new PurgeCSSPlugin({
+            paths: glob.sync(`${PATHS.src}/**/*`,  { nodir: true }),
+        }),
+
         new webpack.ProvidePlugin({
             $: "jquery",
             jQuery: "jquery"
@@ -92,7 +104,51 @@ module.exports = {
                   collapseWhitespace: true,
                   removeComments: true
                 }
-            })
+            }),
+
+
+
+            // OPTIMIZE IMAGES
+            new ImageMinimizerPlugin({
+                minimizer: {
+                  implementation: ImageMinimizerPlugin.imageminGenerate,
+                  options: {
+                    // Lossless optimization with custom option
+                    // Feel free to experiment with options for better result for you
+                    plugins: [
+                      ["gifsicle", { interlaced: true }],
+                      ["mozjpeg", { progressive: true, quality: 50 }],
+                      ["pngquant", { optimizationLevel: 3 , speed: 10, quality:[.9, .95], strip: true}],
+                      // Svgo configuration here https://github.com/svg/svgo#configuration
+                      [
+                        "svgo",
+                        {
+                            plugins: [
+                            
+                                'preset-default',
+                                'prefixIds',
+
+                                // {
+                                //     name: "removeViewBox",
+                                //     active: false,
+                                // },
+
+                                // {
+                                //     name: "addAttributesToSVGElement",
+                                //     params: {
+                                //         attributes: [{ xmlns: "http://www.w3.org/2000/svg" }]
+                                //     }
+                                // }
+
+                            ]
+                        },
+  
+                      ],
+                    ],
+                  },
+                },
+            }),
+            
         ]
     }
 }
